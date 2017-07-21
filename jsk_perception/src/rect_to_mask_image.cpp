@@ -51,15 +51,17 @@ namespace jsk_perception
   void RectToMaskImage::subscribe()
   {
     sub_ = pnh_->subscribe("input", 1, &RectToMaskImage::convert, this);
+    sub_rect_ = pnh_->subscribe("input/rect_array", 1, &RectToMaskImage::convertFromRect, this);
     sub_info_ = pnh_->subscribe("input/camera_info", 1,
                                 &RectToMaskImage::infoCallback, this);
-    ros::V_string names = boost::assign::list_of("~input")("~input/camera_info");
+    ros::V_string names = boost::assign::list_of("~input")("~input/rect_array")("~input/camera_info");
     jsk_topic_tools::warnNoRemap(names);
   }
 
   void RectToMaskImage::unsubscribe()
   {
     sub_.shutdown();
+    sub_rect_.shutdown();
     sub_info_.shutdown();
   }
 
@@ -88,7 +90,28 @@ namespace jsk_perception
     }
   }
 
-  
+  void RectToMaskImage::convertFromRect(
+    const jsk_recognition_msgs::RectArray::ConstPtr& rect_msg)
+  {
+    boost::mutex::scoped_lock lock(mutex_);
+    if (camera_info_) {
+      cv::Mat mask_image = cv::Mat::zeros(camera_info_->height,
+                                          camera_info_->width,
+                                          CV_8UC1);
+      jsk_recognition_msgs::Rect Rect0 = rect_msg->rects[0];
+      int min_x = Rect0.x;
+      int min_y = Rect0.y;
+      int width = Rect0.width;
+      int height = Rect0.height;
+      cv::Rect region(min_x, min_y, width, height);
+      cv::rectangle(mask_image, region, cv::Scalar(255), CV_FILLED);
+      pub_.publish(cv_bridge::CvImage(
+                     rect_msg->header,
+                     sensor_msgs::image_encodings::MONO8,
+                     mask_image).toImageMsg());
+    }
+  }
+
   void RectToMaskImage::infoCallback(
     const sensor_msgs::CameraInfo::ConstPtr& info_msg)
   {

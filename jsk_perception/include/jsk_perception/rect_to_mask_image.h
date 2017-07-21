@@ -37,6 +37,7 @@
 #ifndef JSK_PERCEPTION_RECT_TO_MASK_IMAGE_H_
 #define JSK_PERCEPTION_RECT_TO_MASK_IMAGE_H_
 
+#include <jsk_recognition_msgs/RectArray.h>
 #include <jsk_topic_tools/diagnostic_nodelet.h>
 #include <geometry_msgs/PolygonStamped.h>
 #include <sensor_msgs/Image.h>
@@ -55,12 +56,15 @@ namespace jsk_perception
     virtual void unsubscribe();
     virtual void convert(
       const geometry_msgs::PolygonStamped::ConstPtr& rect_msg);
+    virtual void convertFromRect(
+      const jsk_recognition_msgs::RectArray::ConstPtr& rect_msg);
     virtual void infoCallback(
       const sensor_msgs::CameraInfo::ConstPtr& info_msg);
 
     boost::mutex mutex_;
     ros::Publisher pub_;
     ros::Subscriber sub_;
+    ros::Subscriber sub_rect_;
     ros::Subscriber sub_info_;
     sensor_msgs::CameraInfo::ConstPtr camera_info_;
   private:
