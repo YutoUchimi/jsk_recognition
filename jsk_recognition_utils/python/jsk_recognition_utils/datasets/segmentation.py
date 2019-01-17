@@ -44,6 +44,7 @@ class SemanticSegmentationDataset(chainer.dataset.DatasetMixin):
         label_path = self._labels[i]
 
         image = cv2.imread(image_path)
+        image = image[:, :, ::-1]  # BGR -> RGB
         assert image.dtype == np.uint8
         assert image.ndim == 3
 
