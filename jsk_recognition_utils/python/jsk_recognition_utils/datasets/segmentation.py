@@ -9,13 +9,16 @@ try:
 except ImportError:
     print('chainer_mask_rcnn cannot be imported.')
 import cv2
+import imgaug.augmenters as iaa
+import mvtk
 import numpy as np
 
 
 class SemanticSegmentationDataset(chainer.dataset.DatasetMixin):
 
-    def __init__(self, root_dir):
+    def __init__(self, root_dir, aug=False):
         self.root_dir = root_dir
+        self.aug = aug
 
         class_names_path = osp.join(root_dir, 'class_names.txt')
         with open(class_names_path, 'r') as f:
@@ -48,7 +51,68 @@ class SemanticSegmentationDataset(chainer.dataset.DatasetMixin):
         assert label.dtype == np.int32
         assert label.ndim == 2
 
+        # Data augmentation
+        if self.aug:
+            def st(x):
+                return iaa.Sometimes(0.3, x)
+
+            # 1. Color augmentation
+            obj_datum = dict(img=image)
+            random_state = np.random.RandomState()
+            augs = [
+                st(iaa.Add([-50, 50], per_channel=True)),
+                st(iaa.InColorspace(
+                    'HSV', children=iaa.WithChannels(
+                        [1, 2], iaa.Multiply([0.5, 2])))),
+                st(iaa.GaussianBlur(sigma=[0.0, 1.0])),
+                st(iaa.AdditiveGaussianNoise(
+                    scale=(0.0, 0.1 * 255), per_channel=True)),
+            ]
+            obj_datum = next(mvtk.aug.augment_object_data(
+                [obj_datum], random_state=random_state, augmentations=augs))
+            image = obj_datum['img']
+
+            # 2. Geometric augmentation
+            # 2-1. Affine transform
+            obj_datum2 = dict(img=image, lbl=label)
+            random_state2 = np.random.RandomState()
+            augs = [
+                st(iaa.Affine(scale=(0.7, 1.5), order=0,
+                              mode=['constant', 'symmetric'])),
+                st(iaa.Affine(translate_percent=(-0.1, 0.1),
+                              mode=['constant', 'symmetric'])),
+                st(iaa.Affine(rotate=(-45, 45), order=0,
+                              mode=['constant', 'symmetric'])),
+                st(iaa.Affine(shear=(-20, 20), order=0,
+                              mode=['constant', 'symmetric'])),
+            ]
+            obj_datum = next(mvtk.aug.augment_object_data(
+                [obj_datum2], random_state=random_state2, augmentations=augs))
+            image = obj_datum2['img']
+            label = obj_datum2['lbl']
+
+            # 2-2. Flip
+            if np.random.uniform() < 0.5:
+                image = np.fliplr(image)
+                label = np.fliplr(label)
+            if np.random.uniform() < 0.5:
+                image = np.flipud(image)
+                label = np.flipud(label)
+
         return image, label
+
+    def visualize(self, index):
+        image, label = self[index]
+
+        print('[%04d] %s' % (index, '>' * 75))
+        print('image shape: %s' % repr(image.shape))
+        print('[%04d] %s' % (index, '<' * 75))
+        label_viz = mvtk.image.label2rgb(
+            label, img=image, label_names=self.class_names, alpha=0.7)
+        viz = mvtk.image.tile(
+            [image, label_viz], (1, 2))
+
+        return mvtk.image.resize(viz, size=600 * 600)
 
 
 class InstanceSegmentationDataset(chainer.dataset.DatasetMixin):
