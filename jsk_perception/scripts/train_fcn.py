@@ -193,14 +193,19 @@ class TrainFCN(object):
                 self.val_iterator, self.model, device=self.gpu),
             trigger=(self.eval_interval, self.eval_interval_type))
 
+        # Decrease lr
+        self.trainer.extend(
+            extensions.ExponentialShift('lr', 0.1),
+            trigger=(200, 'epoch'))
+
         # Save snapshot
         self.trainer.extend(
             extensions.snapshot_object(
                 self.model,
                 savefun=S.save_npz,
                 filename='model_snapshot.npz'),
-            trigger=chainer.training.triggers.MinValueTrigger(
-                'validation/main/loss',
+            trigger=chainer.training.triggers.MaxValueTrigger(
+                'validation/main/miou',
                 (self.save_interval, self.save_interval_type)))
 
         # Dump network architecture
@@ -227,7 +232,9 @@ class TrainFCN(object):
                 'elapsed_time',
                 'lr',
                 'main/loss',
+                'main/miou',
                 'validation/main/loss',
+                'validation/main/miou',
             ]), trigger=(self.print_interval, self.print_interval_type))
 
         # Plot
@@ -237,6 +244,15 @@ class TrainFCN(object):
                 'validation/main/loss',
             ],
                 file_name='loss_plot.png',
+                x_key=self.plot_interval_type,
+                trigger=(self.plot_interval, self.plot_interval_type)),
+            trigger=(self.plot_interval, self.plot_interval_type))
+        self.trainer.extend(
+            extensions.PlotReport([
+                'main/miou',
+                'validation/main/miou',
+            ],
+                file_name='miou_plot.png',
                 x_key=self.plot_interval_type,
                 trigger=(self.plot_interval, self.plot_interval_type)),
             trigger=(self.plot_interval, self.plot_interval_type))
