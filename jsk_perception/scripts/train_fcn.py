@@ -15,6 +15,8 @@ from chainer.training import extensions
 import fcn
 import numpy as np
 
+from jsk_recognition_utils.chainermodels import FCN8s
+from jsk_recognition_utils.chainermodels import FCN8sAtOnce
 from jsk_recognition_utils.datasets import SemanticSegmentationDataset
 import rospkg
 
@@ -111,8 +113,9 @@ class TrainFCN(object):
 
     def load_dataset(self):
         self.train_dataset = SemanticSegmentationDataset(
-            self.train_dataset_dir)
-        self.val_dataset = SemanticSegmentationDataset(self.val_dataset_dir)
+            self.train_dataset_dir, aug=True)
+        self.val_dataset = SemanticSegmentationDataset(
+            self.val_dataset_dir, aug=False)
 
     def transform_dataset(self, in_data):
         rgb_img, lbl = in_data
@@ -153,13 +156,13 @@ class TrainFCN(object):
             S.load_npz(fcn32s_path, fcn32s)
             self.model.init_from_fcn32s(fcn32s_path, fcn32s)
         elif self.model_name == 'fcn8s':
-            self.model = fcn.models.FCN8s(n_class=n_class)
+            self.model = FCN8s(n_class=n_class)
             fcn16s = fcn.models.FCN16s()
             fcn16s_path = fcn16s.download()
             S.load_npz(fcn16s_path, fcn16s)
             self.model.init_from_fcn16s(fcn16s_path, fcn16s)
         elif self.model_name == 'fcn8s_at_once':
-            self.model = fcn.models.FCN8sAtOnce(n_class=n_class)
+            self.model = FCN8sAtOnce(n_class=n_class)
             vgg = fcn.models.VGG16()
             vgg_path = vgg.download()
             S.load_npz(vgg_path, vgg)
