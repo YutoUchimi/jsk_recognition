@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 import argparse
 import json
 import matplotlib.pyplot as plt
@@ -39,6 +41,9 @@ def main():
             val_loss.append(tmp['validation/main/loss'])
         if 'epoch' in tmp and 'validation/main/miou' in tmp:
             val_miou.append(tmp['validation/main/miou'])
+
+    print('Max mean IoU for train dataset     : {}'.format(max(train_miou)))
+    print('Max mean IoU for validation dataset: {}'.format(max(val_miou)))
 
     do_not_show_before = 0  # please fill [iteration / 20]
     iteration = iteration[do_not_show_before:]
