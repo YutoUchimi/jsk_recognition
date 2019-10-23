@@ -117,8 +117,6 @@ public:
       //sensor_msgs::Image::Ptr img_msg = bridge_.cvToImgMsg(outimage, "bgr8");
       cv_ptr->image = outimage;
       sensor_msgs::Image::Ptr img_msg = cv_ptr->toImageMsg();
-      img_msg->header.stamp = trans_.stamp_;
-      virtual_info.header.stamp = trans_.stamp_;
       img_msg->header.frame_id = trans_.child_frame_id_;
       virtual_info.header.frame_id = trans_.child_frame_id_;
       pub_.publish(*img_msg, virtual_info);
